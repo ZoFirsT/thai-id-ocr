@@ -21,6 +21,7 @@ class OCRData(BaseModel):
 
 class DebugInfo(BaseModel):
     raw_text_count: int = 0
+    raw_text: List[str] = Field(default_factory=list)
     llm_model: str = "unknown"
 
 

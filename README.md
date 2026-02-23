@@ -1,6 +1,6 @@
 # Thai ID Card OCR Platform
 
-ระบบอ่านข้อมูลบัตรประชาชนไทยแบบ **Local-first** ที่ประกอบด้วย FastAPI (Backend), EasyOCR/OpenCV (OCR Pipeline), Ollama Qwen2.5 (LLM Cleaning) และ Next.js (Frontend อยู่ระหว่างพัฒนา)
+ระบบอ่านข้อมูลบัตรประชาชนไทยแบบ **Local-first** ที่ประกอบด้วย FastAPI (Backend), EasyOCR/OpenCV (OCR Pipeline), Ollama Qwen2.5 (LLM Cleaning) และ Next.js (Frontend UI พร้อมใช้งาน)
 
 ## Table of Contents
 1. [Architecture Overview](#architecture-overview)
@@ -25,7 +25,7 @@
 ```
 
 ### Components
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS (UI สำหรับอัปโหลดและดูผลลัพธ์)
+- **Frontend**: Next.js 16 + React 19 + Tailwind CSS v4 (UI สำหรับอัปโหลด, toggle LLM, แสดงผลลัพธ์ + raw text)
 - **Backend**: FastAPI พร้อม router/services/models ที่แยกชัดเจน
 - **OCR Engine**: EasyOCR + OpenCV พร้อมตรวจจับ GPU (Apple MPS / CUDA / CPU)
 - **LLM Engine**: Ollama hosting Qwen2.5 (สามารถเปลี่ยนโมเดลผ่าน env)
@@ -34,9 +34,10 @@
 ## Key Features
 1. รองรับ `.jpg`, `.jpeg`, `.png` พร้อมตรวจขนาดไฟล์ (`MAX_FILE_SIZE_MB`)
 2. คืนข้อมูลสำคัญครบชุด (เลขบัตร, TH/EN name, DOB, religion, address) + `metadata`/`debug`
-3. logging มีทั้ง rotating file และ console (ควบคุมด้วย `LOG_TO_CONSOLE`)
-4. มี toggle สำหรับ PII masking (`PII_MASKING_ENABLED`)
-5. โครงสร้างโค้ดรองรับการขยายและการทดสอบอัตโนมัติ
+3. Frontend UI ครบชุด: drag & drop, LLM toggle, ข้อจำกัดไฟล์, status banner, raw text accordion, ดาวน์โหลด JSON
+4. logging มีทั้ง rotating file และ console (ควบคุมด้วย `LOG_TO_CONSOLE`)
+5. มี toggle สำหรับ PII masking (`PII_MASKING_ENABLED`) + metadata แจ้งสถานะ
+6. โครงสร้างโค้ดรองรับการขยายและการทดสอบอัตโนมัติ
 
 ## Repository Layout
 ```
@@ -50,7 +51,10 @@ thai-id-ocr/
 │   │   └── services/               # OCR + LLM orchestration
 │   ├── requirements.txt
 │   └── tests/
-└── frontend/                       # Next.js scaffold (อยู่ระหว่างเติม UI)
+└── frontend/
+    ├── src/app/page.tsx            # Upload UI + status/result panels
+    ├── src/components/             # UploadZone, ResultCard ฯลฯ
+    └── src/types/                  # Shared response types
 ```
 
 ## System Requirements
@@ -108,13 +112,15 @@ uvicorn app.main:app --reload
 - Swagger UI: http://localhost:8000/docs
 - Log file: `logs/backend.log`
 
-### 3) Frontend (WIP)
+### 3) Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-เปิด http://localhost:3000 เพื่อดู UI ตัวอย่าง
+เปิด http://localhost:3000 เพื่อใช้งาน UI (LLM toggle, raw text viewer, JSON download)
+
+> หาก backend รันต่างพอร์ต/โดเมน ให้ตั้ง `NEXT_PUBLIC_API_BASE_URL` ก่อน `npm run dev`
 
 ## API Contract
 - Method: `POST`
@@ -123,7 +129,7 @@ npm run dev
 - Field: `image`
 - Optional Query: `use_llm=true|false` (default = true). ถ้า `true` แต่ Ollama ไม่พร้อม ระบบจะตอบ `503` ทันที แทนที่จะรอกระบวนการ OCR เสร็จ
 
-```json
+```jsonc
 {
   "status": "success",
   "request_id": "uuidv4",
@@ -142,6 +148,7 @@ npm run dev
   },
   "debug": {
     "raw_text_count": 37,
+    "raw_text": ["นาย สมชาย ..."],
     "llm_model": "qwen2.5"
   }
 }
@@ -152,7 +159,7 @@ npm run dev
 cd backend
 pytest -vv
 ```
-ปัจจุบันมี smoke tests สำหรับ health check และ content-type validation (กำลังเพิ่มกรณีไฟล์เกิน, masking toggle, LLM failure)
+-ครอบคลุมกรณี health check, content-type, ไฟล์ใหญ่เกิน, ปิด LLM, Ollama unavailable (503) และ LLM failure (502)
 
 ## Logging & Security
 - `setup_logging` ตั้ง rotating file handler และ console handler (กำหนดได้ผ่าน env)

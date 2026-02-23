@@ -43,7 +43,7 @@ export LLM_ENABLED=true
    - Per-request decision: `use_llm` query param overrides `LLM_ENABLED`
    - Calls `is_ollama_available()` before invoking Ollama; if unavailable and caller forced LLM, FastAPI returns 503
    - Raises `LLMServiceError` on failure (HTTP 502)
-4. **Response** – Wrap with `ExtractIdResponse` including metadata & debug info (reports `llm_model` as `disabled`/`unavailable` when skipped)
+4. **Response** – Wrap with `ExtractIdResponse` including metadata & debug info (`raw_text`, `raw_text_count`, และรายงาน `llm_model` เป็น `disabled`/`unavailable` เมื่อไม่ได้เรียก)
 
 ## Logging
 - `setup_logging(log_file, log_level, enable_console)` configures rotating file handler + optional console handler.
@@ -56,11 +56,12 @@ export LLM_ENABLED=true
 - Metadata (`OCRMetadata.is_masked`) stored in responses for audit trails.
 
 ## Testing Coverage
-- Smoke tests for health check + content-type validation
+- Health check + content-type validation
 - Oversized upload (expects 413)
 - Per-request LLM disable path (ensures raw data + metadata returned)
 - Ollama unavailable (expects 503 when `use_llm=true`)
 - LLM processing failure (expects 502)
+- Debug payload snapshots (ensures `raw_text_count`/`llm_model` reflect fallback states)
 - TODO: add direct assertion for masking toggle metadata once masking exposed via dependency injection/test doubles
 
 Run tests:
