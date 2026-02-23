@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ollama_base_url: AnyHttpUrl = Field(
         default="http://localhost:11434", alias="OLLAMA_BASE_URL"
     )
-    ollama_model: str = Field(default="qwen2.5", alias="OLLAMA_MODEL")
+    ollama_model: str = Field(default="qwen2.5:3b", alias="OLLAMA_MODEL")
     llm_enabled: bool = Field(default=True, alias="LLM_ENABLED")
 
     max_file_size_mb: int = Field(default=8, alias="MAX_FILE_SIZE_MB")
