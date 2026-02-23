@@ -1,40 +1,39 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from app.services.ocr_service import process_id_card 
-from app.services.llm_service import clean_data_with_llm
+from __future__ import annotations
 
-app = FastAPI(title="Thai ID Card OCR API (AI Powered)")
+import warnings
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1.router import router as api_router
+from app.core.config import get_settings
+from app.core.logging_config import get_logger, setup_logging
+
+warnings.filterwarnings("ignore", category=UserWarning)
+
+settings = get_settings()
+setup_logging(settings.log_file, settings.log_level)
+logger = get_logger(__name__)
+
+app = FastAPI(title=settings.app_name)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins or ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def health_check():
-    return {"status": "success", "message": "API with LLM is running!"}
+    logger.debug("Health check invoked")
+    return {
+        "status": "success",
+        "message": f"{settings.app_name} is running",
+        "environment": settings.environment,
+    }
 
-@app.post("/api/v1/extract-id")
-async def extract_id_card(image: UploadFile = File(...)):
-    image_bytes = await image.read()
-    try:
-        # 1. ให้ EasyOCR อ่านภาพ (ได้เป็น Raw Text)
-        ocr_result = process_id_card(image_bytes)
-        raw_text = ocr_result["raw_text"]
-        
-        # 2. ส่ง Raw Text ไปให้ LLM (Ollama) แก้คำผิดและจัดฟอร์แมต JSON
-        ai_cleaned_data = clean_data_with_llm(raw_text)
-        
-        return {
-            "status": "success",
-            "message": f"Processed: {image.filename}",
-            "data": ai_cleaned_data,
-            "debug": {
-                "raw_text": raw_text
-            }
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+
+app.include_router(api_router)
